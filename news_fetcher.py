@@ -102,23 +102,66 @@ def extract_core_incident(title: str) -> str:
     return f"{loc}_{atype}" if loc or atype else ""
 
 
+def _clean_title(title: str) -> str:
+    """제목에서 언론사 제거 (- 이후 부분)"""
+    return title.split(' - ')[0].strip()
+
+
+def _word_overlap_ratio(a: str, b: str) -> float:
+    """두 문장의 단어 겹침 비율 (Jaccard similarity)"""
+    words_a = set(a.split())
+    words_b = set(b.split())
+    if not words_a or not words_b:
+        return 0.0
+    intersection = words_a & words_b
+    union = words_a | words_b
+    return len(intersection) / len(union)
+
+
+# 그룹핑용 핵심 명사 패턴 (지역/사고유형 외에 사건 특정 키워드)
+_GROUPING_NOUNS = re.compile(
+    r'(고령\s*운전자|고령|노인|어르신|어린이|아내|남편|50대|60대|70대|80대'
+    r'|사망자|사망|교통사고|부상|중경상|중상|경상'
+    r'|음주|만취|무면허|졸음|급발진|역주행|신호위반'
+    r'|볼라드|방호울타리|가드레일|안전시설|방호|울타리'
+    r'|택배|배달|화물|포터|트럭|버스|SUV|승용차|오토바이|전동킥보드'
+    r'|깨비시장|전통시장|시장|아파트|주택가|골목|통학로'
+    r'|검거|입건|구속|체포|직위해제|면허취소|면허정지)'
+)
+
+
+def _extract_all_keywords(title: str) -> set:
+    """제목에서 모든 핵심 키워드 추출 (그룹핑용, 확장 패턴 포함)"""
+    clean = title.split(' - ')[0].strip()
+    locs = LOCATIONS.findall(clean)
+    types = ACCIDENT_TYPES.findall(clean)
+    targets = TARGETS.findall(clean)
+    nouns = _GROUPING_NOUNS.findall(clean)
+    return set(locs + types + targets + nouns)
+
+
 def is_similar(title_a: str, title_b: str) -> bool:
     """두 제목이 같은 사건인지 판단"""
-    kw_a = extract_keywords(title_a)
-    kw_b = extract_keywords(title_b)
+    # 1. 확장 키워드 기반 (기존보다 넓은 패턴)
+    kw_a = _extract_all_keywords(title_a)
+    kw_b = _extract_all_keywords(title_b)
 
-    if len(kw_a) < 2 or len(kw_b) < 2:
-        return False
+    if kw_a and kw_b:
+        common = kw_a & kw_b
+        # 키워드 2개 이상 겹치면 같은 사건
+        if len(common) >= 2:
+            return True
 
-    common = kw_a & kw_b
-    # 키워드 2개 이상 겹치면 같은 사건으로 판단 (기존 3개 → 2개로 낮춤)
-    if len(common) >= 2:
-        return True
-
-    # 핵심 사건 동일하면 같은 사건
+    # 2. 핵심 사건 동일
     core_a = extract_core_incident(title_a)
     core_b = extract_core_incident(title_b)
     if core_a and core_b and core_a == core_b:
+        return True
+
+    # 3. 단어 겹침 비율 (언론사 제거 후)
+    clean_a = _clean_title(title_a)
+    clean_b = _clean_title(title_b)
+    if _word_overlap_ratio(clean_a, clean_b) >= 0.35:
         return True
 
     return False
