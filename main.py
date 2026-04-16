@@ -54,6 +54,10 @@ def main():
 
     print(f"수집: {total_articles}개 기사 → {len(news_groups)}개 사건 / 신규: {len(new_groups)}개 사건")
 
+    # Debug: print titles for diagnosis
+    for g in new_groups:
+        print(f"  [신규] {g.representative.title}")
+
     # LLM relevance filter
     if new_groups:
         pre_filter = len(new_groups)
