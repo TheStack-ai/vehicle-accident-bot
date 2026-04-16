@@ -16,6 +16,7 @@ from config import (
 )
 from news_fetcher import fetch_all_news
 from telegram_bot import send_news_alerts
+from llm_news_filter import filter_news_groups
 
 SENT_FILE = Path(__file__).parent / "sent_news.json"
 
@@ -53,11 +54,17 @@ def main():
 
     print(f"수집: {total_articles}개 기사 → {len(news_groups)}개 사건 / 신규: {len(new_groups)}개 사건")
 
+    # LLM relevance filter
+    if new_groups:
+        pre_filter = len(new_groups)
+        new_groups = filter_news_groups(new_groups)
+        print(f"LLM 필터: {len(new_groups)}/{pre_filter}건 관련 사고")
+
     if new_groups:
         sent_ids = send_news_alerts(
             TELEGRAM_BOT_TOKEN,
             TELEGRAM_CHAT_ID,
-            news_groups,
+            new_groups,
             sent_ids
         )
         save_sent_ids(sent_ids)
