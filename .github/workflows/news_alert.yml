@@ -38,3 +38,4 @@ jobs:
           git add sent_news.json || true
           git diff --staged --quiet || git commit -m "Update sent_news.json"
           git push || true
+# schedule rebound 2026-04-28T05:03:59Z
