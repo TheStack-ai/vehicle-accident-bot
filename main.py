@@ -77,4 +77,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit("Retired: news collection and delivery now run in the private unified alert pipeline.")
